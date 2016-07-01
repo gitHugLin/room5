@@ -25,7 +25,7 @@ wdrObject::wdrObject()
 {
     mWidth = 0;
     mHeight = 0;
-    mBlkSize = 128;
+    mBlkSize = 127;
     mGainOffset = 410;
 
     mIntegralImage = NULL;
@@ -59,9 +59,7 @@ bool wdrObject::loadData(string imagePath, bool pgm)
     mHeight = mGrayChannel.rows;
     LOGE("loadData: mWidth = %d,mHeight = %d",mWidth,mHeight);
 
-    UINT32 inteImageWidth = mWidth;
-    UINT32 inteImageHeight = mHeight;
-    mIntegralImage = new Mat(inteImageHeight, inteImageWidth, CV_32SC1);
+    mIntegralImage = new Mat(mHeight, mWidth, CV_32SC1);
 
 }
 
@@ -92,7 +90,9 @@ void wdrObject::fastIntegral()
             *(pIntegral+offset+j) = *(pIntegral+offset+j-1) + columnSum[j];
         }
     }
-    LOGE("Log:max value in intergralImage pixels = %d",*(pIntegral+mWidth*mHeight-1));
+    int gGainIndex = *(pIntegral+mWidth*mHeight-1)/(mWidth*mHeight);
+    mGlobalGain = mGainVec[gGainIndex];
+    LOGE("Log:max value in intergralImage pixels = %f",mGlobalGain);
     workEnd("end of fastIntegral!");
 }
 
@@ -100,40 +100,42 @@ void wdrObject::fastIntegral()
 void wdrObject::toneMapping()
 {
     workBegin();
-    UINT32 nCols = mWidth,nRows = mHeight;
-    UINT32 x = 0,y = 0;
+    INT32 nCols = mWidth,nRows = mHeight;
+    INT32 x = 0,y = 0;
     INT32* pIntegral = NULL;
     UINT8* pGray = NULL;
     float blockAvgLumi = 0;
     pIntegral = mIntegralImage->ptr<INT32>(0);
-    //pGray = mGrayChannel.ptr<UINT8>(0);
+    mDstImage = mGrayChannel;
+    pGray = mDstImage.ptr<UINT8>(0);
     //LOGE("nCols = %d, nRows = %d",nCols,nRows);
     int i = 0;
     for( y = 0; y < nRows; y++)
     {
         for ( x = 0; x < nCols; x++)
         {
-            UINT32 xMin = MAX(x - mBlkSize, 0);
-            UINT32 yMin = MAX(y - mBlkSize, 0);
-            UINT32 xMax = MIN(x + mBlkSize, nCols);
-            UINT32 yMax = MIN(y + mBlkSize, nRows);
+            //LOGE("INDEX = %d ",i);
+            //i++;
+            INT32 xMin = wdrMax(x - mBlkSize, 0);
+            INT32 yMin = wdrMax(y - mBlkSize, 0);
+            INT32 xMax = wdrMin(x + mBlkSize, nCols - 1);
+            INT32 yMax = wdrMin(y + mBlkSize, nRows - 1);
 
-            // blockAvgLumi = *(pIntegral+xMax+yMax*nCols) - *(pIntegral+xMin+yMax*nCols) -
-            //             *(pIntegral+xMax+yMin*nCols) + *(pIntegral+xMin+yMin*nCols);
+            blockAvgLumi = *(pIntegral+xMax+yMax*nCols) - *(pIntegral+xMin+yMax*nCols) -
+                        *(pIntegral+xMax+yMin*nCols) + *(pIntegral+xMin+yMin*nCols);
+            blockAvgLumi = blockAvgLumi/((yMax - yMin)*(xMax - xMin)*255);
+            int index = blockAvgLumi;
+            //float gain = mGainVec[index];
+            float gain = (1.18 + *(pGray+y*nCols+x)*blockAvgLumi/255)*(*(pGray+y*nCols+x)/255 + blockAvgLumi+0.18);
 
-                        blockAvgLumi = *(pIntegral+384+384*nCols) - *(pIntegral+127+384*nCols) -
-                                    *(pIntegral+384+127*nCols) + *(pIntegral+127+127*nCols);
-            //blockAvgLumi = blockAvgLumi/((yMax - yMin)*(xMax - xMin));
+            INT32 curPixel = wdrMin(int(gain*(*(pGray+y*nCols+x))), 255);
+            *(pGray+y*nCols+x) = curPixel;
 
-            //*pGray++ = blockAvgLumi;
         }
-    }
-    LOGE("*(pIntegral+384+384*nCols) = %d",*(pIntegral+384+384*nCols));
-    LOGE("*(pIntegral+384+127*nCols) = %d",*(pIntegral+384+127*nCols));
-    LOGE("*(pIntegral+127+384*nCols) = %d",*(pIntegral+127+384*nCols));
-    LOGE("*(pIntegral+127+127*nCols) = %d",*(pIntegral+127+127*nCols));
 
-    LOGE("end of toneMapping! blockAvgLumi = %lf",blockAvgLumi);
+    }
+
+    //LOGE("end of toneMapping! blockAvgLumi = %lf",blockAvgLumi);
     workEnd("TONEMAPPING TIME:");
 }
 
@@ -145,6 +147,6 @@ void wdrObject::process()
     fastIntegral();
     toneMapping();
     //workEnd("PROCESS TIME:");
-    //imwrite("/sdcard/grayImage.jpg",mGrayChannel);
+    imwrite("/sdcard/grayImage.jpg",mDstImage);
 
 }

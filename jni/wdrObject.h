@@ -29,8 +29,8 @@ typedef struct _wdrPoint
 	UINT8 y;
 }wdrPoint;
 
-//#define MIN(a,b)                        ((a) <= (b) ? (a):(b))
-//#define MAX(a,b)                        ((a) >= (b) ? (a):(b))
+#define wdrMin(a,b)                        ((a) < (b) ? (a):(b))
+#define wdrMax(a,b)                        ((a) < (b) ? (b):(a))
 
 class wdrObject{
 public:
@@ -41,11 +41,13 @@ private:
     Mat *mIntegralImage;
     Mat mGrayChannel;
     Mat mDstImage;
-
+private:
+	float mGainVec[255];
+	float mGlobalGain;
 private:
     UINT32 mWidth;
     UINT32 mHeight;
-    UINT32 mBlkSize;
+    INT32 mBlkSize;
     UINT32 mGainOffset;
 private:
 	void fastIntegral();
