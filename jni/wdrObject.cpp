@@ -123,10 +123,10 @@ void wdrObject::toneMapping()
 
             blockAvgLumi = *(pIntegral+xMax+yMax*nCols) - *(pIntegral+xMin+yMax*nCols) -
                         *(pIntegral+xMax+yMin*nCols) + *(pIntegral+xMin+yMin*nCols);
-            blockAvgLumi = blockAvgLumi/((yMax - yMin)*(xMax - xMin)*255);
+            blockAvgLumi = blockAvgLumi/((yMax - yMin)*(xMax - xMin))/255;
             int index = blockAvgLumi;
             //float gain = mGainVec[index];
-            float gain = (1.18 + *(pGray+y*nCols+x)*blockAvgLumi/255)*(*(pGray+y*nCols+x)/255 + blockAvgLumi+0.18);
+            float gain = (1.18 + *(pGray+y*nCols+x)*blockAvgLumi/255)/(*(pGray+y*nCols+x)/255 + blockAvgLumi+0.18);
 
             INT32 curPixel = wdrMin(int(gain*(*(pGray+y*nCols+x))), 255);
             *(pGray+y*nCols+x) = curPixel;
