@@ -26,9 +26,18 @@ wdrObject::wdrObject()
     mWidth = 0;
     mHeight = 0;
     mBlkSize = 127;
-    mGainOffset = 410;
+    mGainOffset = 0.18;
 
     mIntegralImage = NULL;
+
+    for(int y = 0; y < 256; y++)
+        for (int x = 0; x < 256; x++) {
+            float n = y,k = x;
+            float i = n/255,j = k/255;
+            mToneMapLut[y][x] = (1 + mGainOffset + i*j)/(i+j + mGainOffset);
+            if(x == 20 &&y == 255)
+            LOGE("mToneMapLut[%d][%d] = %f",y,x,mToneMapLut[y][x]);
+        }
 }
 
 wdrObject::~wdrObject()
@@ -90,9 +99,8 @@ void wdrObject::fastIntegral()
             *(pIntegral+offset+j) = *(pIntegral+offset+j-1) + columnSum[j];
         }
     }
-    int gGainIndex = *(pIntegral+mWidth*mHeight-1)/(mWidth*mHeight);
-    mGlobalGain = mGainVec[gGainIndex];
-    LOGE("Log:max value in intergralImage pixels = %f",mGlobalGain);
+    int gGainIndex = *(pIntegral+(mWidth-1)*(mHeight-1))/(mWidth*mHeight);
+    LOGE("Log:max value in intergralImage pixels = %d",gGainIndex);
     workEnd("end of fastIntegral!");
 }
 
@@ -108,14 +116,11 @@ void wdrObject::toneMapping()
     pIntegral = mIntegralImage->ptr<INT32>(0);
     mDstImage = mGrayChannel;
     pGray = mDstImage.ptr<UINT8>(0);
-    //LOGE("nCols = %d, nRows = %d",nCols,nRows);
-    int i = 0;
+
     for( y = 0; y < nRows; y++)
     {
         for ( x = 0; x < nCols; x++)
         {
-            //LOGE("INDEX = %d ",i);
-            //i++;
             INT32 xMin = wdrMax(x - mBlkSize, 0);
             INT32 yMin = wdrMax(y - mBlkSize, 0);
             INT32 xMax = wdrMin(x + mBlkSize, nCols - 1);
@@ -123,13 +128,15 @@ void wdrObject::toneMapping()
 
             blockAvgLumi = *(pIntegral+xMax+yMax*nCols) - *(pIntegral+xMin+yMax*nCols) -
                         *(pIntegral+xMax+yMin*nCols) + *(pIntegral+xMin+yMin*nCols);
-            blockAvgLumi = blockAvgLumi/((yMax - yMin)*(xMax - xMin))/255;
-            int index = blockAvgLumi;
-            //float gain = mGainVec[index];
-            float gain = (1.18 + *(pGray+y*nCols+x)*blockAvgLumi/255)/(*(pGray+y*nCols+x)/255 + blockAvgLumi+0.18);
 
-            INT32 curPixel = wdrMin(int(gain*(*(pGray+y*nCols+x))), 255);
-            *(pGray+y*nCols+x) = curPixel;
+            blockAvgLumi = blockAvgLumi/((yMax - yMin)*(xMax - xMin));
+            int offsetGray = y*nCols+x;
+            int indexX = (int)blockAvgLumi;
+            int indexY = *(pGray+offsetGray);
+            float gain = mToneMapLut[indexY][indexX];
+
+            INT32 curPixel = wdrMin(int(gain*indexY), 255);
+            *(pGray+offsetGray) = curPixel;
 
         }
 

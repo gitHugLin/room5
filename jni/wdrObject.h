@@ -41,14 +41,14 @@ private:
     Mat *mIntegralImage;
     Mat mGrayChannel;
     Mat mDstImage;
+
 private:
-	float mGainVec[255];
-	float mGlobalGain;
+	float mToneMapLut[256][256];
 private:
     UINT32 mWidth;
     UINT32 mHeight;
     INT32 mBlkSize;
-    UINT32 mGainOffset;
+    float mGainOffset;
 private:
 	void fastIntegral();
 	void toneMapping();
