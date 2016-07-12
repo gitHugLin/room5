@@ -19,4 +19,5 @@ LOCAL_SRC_FILES := \
 
 LOCAL_MODULE:= test-wdr
 LOCAL_SHARED_LIBRARIES := libopencv_java3
-include $(BUILD_EXECUTABLE)
+# include $(BUILD_EXECUTABLE)
+include $(BUILD_SHARED_LIBRARY)

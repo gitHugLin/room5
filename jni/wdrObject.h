@@ -57,9 +57,6 @@ private:
 private:
 	void fastIntegral();
 	void toneMapping();
-	void neon_integral_image(const uint8_t *sourceImage, uint32_t *integralImage,
-	                         size_t width, size_t height);
-	void getInteImageNeon();
 public:
     void process();
     bool loadData(string imagePath,bool pgm = false);
